@@ -1,0 +1,41 @@
+syntax = "proto3";
+
+package movie_info;
+
+// gRPC service
+service MovieInfo {
+    // Unary Call: 1 client request and 1 server response
+    rpc GetMovieInfo (MovieRequest) returns (MovieReply);
+
+    // Server Streaming: 1 Client request with many ids comma separated and many server responses
+    rpc GetMoviesServerStream (MovieListRequest) returns (stream MovieReply);
+
+    // Client Streaming: Many Client request with 1 id each, and 1 server response with a list
+    rpc GetMoviesClientStream (stream MovieRequest) returns (MovieListReply);
+
+    // Bidirectional Streaming: Many Client request with 1 id each, and many server responses with 1 movie each
+    rpc GetMoviesBidirectionalStream (stream MovieRequest) returns (stream MovieReply);
+}
+
+// Message client request with 1 movie_id
+message MovieRequest {
+    int32 movie_id = 1;
+}
+
+// Message Server response with 1 movie
+message MovieReply {
+    int32 movie_id = 1;
+    string movie_name = 2;
+    int32 movie_release_year = 3;
+    string movie_genre = 4;
+}
+
+// Message client request with a list of movie_ids
+message MovieListRequest {
+    repeated int32 movie_ids = 1;
+}
+
+// Message Server response with a list of movies
+message MovieListReply {
+    repeated MovieReply movies = 1;
+}

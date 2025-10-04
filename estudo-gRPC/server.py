@@ -66,6 +66,8 @@ class MovieInfoServicer(movie_info_pb2_grpc.MovieInfoServicer):
     # Implementing GetMovieInfo defined in proto file
     def GetMovieInfo(self, request, context):
         
+        print(f"\nServer receiving \"Unary Call\" request for movie id: {request.movie_id}\n")
+        
         # Get movie from list
         movie_response = next((movie for movie in self.movies if movie["movie_id"] == request.movie_id))
         
@@ -75,6 +77,40 @@ class MovieInfoServicer(movie_info_pb2_grpc.MovieInfoServicer):
             movie_release_year=movie_response["movie_release_year"],
             movie_genre=movie_response["movie_genre"]
         )
+    
+    # Server Streaming method for returning movies to the client, one at a time
+    def GetMoviesServerStream(self, request, context):
+        
+        print(f"\nServer receiving \"Server Streaming\" request for movie IDs: {request.movie_ids}\n")
+        
+        for movie_id in request.movie_ids:
+            movie = next((m for m in self.movies if m["movie_id"] == movie_id), None)
+            if movie:
+                yield movie_info_pb2.MovieReply(**movie)
+            else:
+                print(f"Movie with ID {movie_id} not found")
+                
+    # Client streaming method for returning a list of movies at once, for several ids streamed by client
+    def GetMoviesClientStream(self, request_iterator, context):
+        
+        print(f"\nServer receiving \"Client stream\" request...\n")
+
+        movie_list = []
+        for request in request_iterator:
+            movie = next((m for m in self.movies if m["movie_id"] == request.movie_id), None)
+            if movie:
+                movie_list.append(movie_info_pb2.MovieReply(**movie))
+        return movie_info_pb2.MovieListReply(movies=movie_list)
+
+    # Bidirectional streaming method for returning one film at a time by each id streamed by client
+    def GetMoviesBidirectionalStream(self, request_iterator, context):
+        
+        print(f"\nServer receiving \"Bidirectional stream\" request...\n")
+        
+        for request in request_iterator:
+            movie = next((m for m in self.movies if m["movie_id"] == request.movie_id), None)
+            if movie:
+                yield movie_info_pb2.MovieReply(**movie)
     
 def serve():
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=8)) # Defining number of threads to process requests paralel
