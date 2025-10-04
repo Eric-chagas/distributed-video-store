@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package movie_info;
+
+// gRPC service
+service MovieInfo {
+    rpc GetMovieInfo (MovieRequest) returns (MovieReply);
+}
+
+// Message client request
+message MovieRequest {
+    int32 movie_id = 1;
+}
+
+// Message Server response
+message MovieReply {
+    int32 movie_id = 1;
+    string movie_name = 2;
+    int32 movie_release_year = 3;
+    string movie_genre = 4;
+}

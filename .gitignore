@@ -205,3 +205,8 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# Protobuffer automatically generated files
+*_pb2*.py
+*_pb.go
+*_pb2_grpc.py
