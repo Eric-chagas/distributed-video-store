@@ -368,4 +368,12 @@ Na Figura 04, está ilustrado o resultado da execução desse cliente.
 
 #### 2.3.6 Discussão do estudo
 
-Ao implementar os métodos acima, percebo que
+Ao implementar os métodos acima, percebo que assim como em outros temas da computação como arquitetura de microsserviços e monolito, polirepo e monorepo, orientado a eventos e orientado a chamadas, entre outros assuntos, não existe bala de prata com relação a qual tipo de chamada gRPC utilizar. 
+
+Fica claro que cada situação pode demandar um tipo diferente de chamada, minha percepção após esse experimento é:
+
+1. **Unary calls**: Pode ser melhor utilizada em chamadas nas quais o processamento paralelo de chamadas não é algo crucial, para extrações pontuais ou consultas mais simples
+2. **Server stream**: Acredito que possa ser bem empregado em situações onde o cliente está ativamente aguardando por resposta do servidor por exemplo, mas os dados recebidos podem ser entregues em partes. No caso da locadora por exemplo, não é um problema mostrar os filmes à medida que o cliente às recebe na tela, e manter um "loading" para o que ainda não foi carregado. O mesmo não pode ser dito de um sistema bancário por exemplo, em que se o cliente recebe um nome, ou valor monetário "quebrado" isso pode ter consequências graves.
+3. **Client stream**: Esse aparenta se adequar melhor a situações opostas à que citei no server stream, por exemplo, quando não se tem problema em aguardar pela resposta do servidor do lado do cliente, e é importante receber os dados completos, de uma vez só para que a consistência das regras de negócio não sejam prejudicadas. Acredito que também se comporte bem quando a conexão do lado do cliente é lenta, os dados são enviados em partes e o servidor responde após receber todos.
+4. **Bidirectional stream**: O bidirectional stream, pode se comportar bem quando empregado em comunicações como chats online por exemplo, onde se requer uma sincronia maior mas não é possível prever quantos pacotes serão enviados em um período de tempo.
+
