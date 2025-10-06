@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package catalogue;
+
+option go_package = "distributed-video-store/catalogue-service/protobuff_gen;cataloguepb";
+
+service CatalogueService {
+  rpc GetMovie (MovieRequest) returns (MovieResponse);
+}
+
+message MovieRequest {
+  int32 id = 1;
+}
+
+message MovieResponse {
+  int32 id = 1;
+  string title = 2;
+  string genre = 3;
+  int32 year = 4;
+}

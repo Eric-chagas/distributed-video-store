@@ -208,5 +208,5 @@ __marimo__/
 
 # Protobuffer automatically generated files
 *_pb2*.py
-*_pb.go
+*.pb.go
 *_pb2_grpc.py

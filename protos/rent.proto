@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package rent;
+
+service RentService {
+  rpc CheckAvailability (RentRequest) returns (RentResponse);
+}
+
+message RentRequest {
+  int32 movie_id = 1;
+}
+
+message RentResponse {
+  int32 movie_id = 1;
+  bool available = 2;
+  string status = 3;
+}

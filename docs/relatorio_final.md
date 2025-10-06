@@ -27,7 +27,7 @@ Em geral, é comum utilizar ambientes com múltiplos repositórios para aplicaç
 
 No entanto, para o escopo desse trabalho, que é uma simulação desenvolvida apenas por uma pessoa, será adotada uma estratégia de monorepo, ou seja, o projeto será organizado em um único repositório, e o deploy de cada componente da arquitetura no kubernetes será feito de maneira distribuída através dos manifestos de configuração.
 
-## 2. O Framework gRPC e Tipos de Comunicação (B.1)
+## 2. O Framework gRPC e Tipos de Comunicação
 
 ### 2.1. Conceitos usados pelo gRPC
 
@@ -377,3 +377,52 @@ Fica claro que cada situação pode demandar um tipo diferente de chamada, minha
 3. **Client stream**: Esse aparenta se adequar melhor a situações opostas à que citei no server stream, por exemplo, quando não se tem problema em aguardar pela resposta do servidor do lado do cliente, e é importante receber os dados completos, de uma vez só para que a consistência das regras de negócio não sejam prejudicadas. Acredito que também se comporte bem quando a conexão do lado do cliente é lenta, os dados são enviados em partes e o servidor responde após receber todos.
 4. **Bidirectional stream**: O bidirectional stream, pode se comportar bem quando empregado em comunicações como chats online por exemplo, onde se requer uma sincronia maior mas não é possível prever quantos pacotes serão enviados em um período de tempo.
 
+## 3. Construção da Aplicação Cliente/Servidor com gRPC (B.2)
+
+### 3.1. Detalhes da Aplicação Escolhida e Funcionalidades
+
+- **Título da Aplicação:** Distributed Video Store  
+- **Descrição:**  
+  O sistema simula uma loja de vídeos distribuída, permitindo consultar informações sobre filmes, combinando dados provenientes de dois microserviços independentes:  
+  - **Serviço A (Catálogo):** fornece metadados de filmes (título, gênero, duração, ano).  
+  - **Serviço B (Estoque):** retorna informações de disponibilidade e preço de aluguel.  
+  O **Gateway (P)** atua como ponto de entrada REST, recebendo requisições HTTP do cliente web, convertendo-as em chamadas gRPC para os microserviços e consolidando as respostas em um único JSON.
+  
+- **Linguagens Utilizadas:**
+  - **Módulo P (Gateway/API):** Python (FastAPI + gRPC client)  
+  - **Módulo A (Catálogo):** Go (gRPC server)  
+  - **Módulo B (Estoque):** Python (gRPC server)  
+  - **Frontend:** HTML/JS simples, consumindo a API REST do gateway  
+
+### 3.2. Estrutura dos Módulos Backend (P, A e B)
+
+- **Módulo P (API Gateway / gRPC Stub):**  
+  Recebe requisições HTTP (`GET /api/movies/:id`), chama os serviços A e B via gRPC, consolida os dados (metadados + disponibilidade/preço) e retorna a resposta em JSON.  
+  - **Framework:** FastAPI  
+  - **Exemplo de rota:** `http://localhost:8000/api/movies/1`  
+
+- **Módulo A (gRPC Server - Catálogo):**  
+  Implementado em Go. Retorna informações estáticas de filmes (título, gênero, ano de lançamento, duração).
+
+- **Módulo B (gRPC Server - Estoque):**  
+  Implementado em Python. Retorna disponibilidade (em estoque ou não), preço de aluguel e possíveis promoções.
+
+- **Fluxo Colaborativo:**  
+  O cliente requisita `GET /api/movies/1` → o **Gateway (P)** chama o **Serviço A (Go)** e o **Serviço B (Python)** via gRPC → combina as respostas → retorna um JSON completo para o frontend.
+
+### 3.3. Metodologia de Implementação
+
+- **Passos:**
+  1. Definição da interface no `protos/movie.proto`
+  2. Geração dos *stubs* gRPC com `protoc` (Go e Python)
+  3. Implementação dos servidores gRPC (A e B)
+  4. Implementação do gateway (P) com FastAPI + gRPC client
+  5. Criação do frontend simples (HTML/JS)
+  6. Dockerização de todos os módulos
+  7. Deploy local com Minikube e Kubernetes
+
+- **Dificuldades:**  
+  Comunicação entre linguagens distintas, mapeamento das chamadas gRPC no Gateway, configuração do HTTP/2 nos contêineres e integração no cluster Kubernetes.
+
+- **Testes:**  
+  Realizados via `curl`, browser e `ab` (Apache Bench), com logs em terminal confirmando chamadas gRPC entre os módulos.
