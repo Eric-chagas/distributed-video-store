@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package catalogue;
 
-option go_package = "distributed-video-store/catalogue-service/protobuff_gen;cataloguepb";
+option go_package = "distributed-video-store/catalogue-service/proto_generated;catalogueproto";
 
 service CatalogueService {
   rpc GetMovie (MovieRequest) returns (MovieResponse);

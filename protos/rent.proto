@@ -2,6 +2,8 @@ syntax = "proto3";
 
 package rent;
 
+option go_package = "distributed-video-store/catalogue-service/proto_generated;rentproto";
+
 service RentService {
   rpc CheckAvailability (RentRequest) returns (RentResponse);
 }

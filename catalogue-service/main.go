@@ -5,9 +5,8 @@ import (
 	"fmt"
 	"log"
 	"net"
-
-	cataloguepb "distributed-video-store/catalogue-service/protobuff_gen"
 	"google.golang.org/grpc"
+	catalogueproto "distributed-video-store/catalogue-service/proto_generated"
 )
 
 // Define a struct Movie
@@ -20,11 +19,11 @@ type Movie struct {
 
 // gRPC server struct
 type server struct {
-	cataloguepb.UnimplementedCatalogueServiceServer
+	catalogueproto.UnimplementedCatalogueServiceServer
 }
 
 // Implementa o método GetMovie definido no .proto
-func (s *server) GetMovie(ctx context.Context, req *cataloguepb.MovieRequest) (*cataloguepb.MovieResponse, error) {
+func (s *server) GetMovie(ctx context.Context, req *catalogueproto.MovieRequest) (*catalogueproto.MovieResponse, error) {
 	movies := []Movie{
 		{1, "Kids", 1995, "Drama"},
 		{2, "Happiness", 1998, "Comedy-Drama"},
@@ -40,7 +39,7 @@ func (s *server) GetMovie(ctx context.Context, req *cataloguepb.MovieRequest) (*
 	// Busca pelo ID requisitado
 	for _, movie := range movies {
 		if movie.ID == req.Id {
-			return &cataloguepb.MovieResponse{
+			return &catalogueproto.MovieResponse{
 				Id:    movie.ID,
 				Title: movie.Title,
 				Genre: movie.Genre,
@@ -50,7 +49,7 @@ func (s *server) GetMovie(ctx context.Context, req *cataloguepb.MovieRequest) (*
 	}
 
 	// Caso não encontre, retorna um default
-	return &cataloguepb.MovieResponse{
+	return &catalogueproto.MovieResponse{
 		Id:    req.Id,
 		Title: "Not Found",
 		Genre: "N/A",
@@ -65,7 +64,7 @@ func main() {
 	}
 
 	s := grpc.NewServer()
-	cataloguepb.RegisterCatalogueServiceServer(s, &server{})
+	catalogueproto.RegisterCatalogueServiceServer(s, &server{})
 
 	fmt.Println("Catalogue Service listening on port 50051...")
 	if err := s.Serve(lis); err != nil {

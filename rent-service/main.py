@@ -2,7 +2,7 @@ import grpc
 from concurrent import futures
 import time
 
-from protobuff_gen import rent_pb2, rent_pb2_grpc
+from proto_generated import rent_pb2, rent_pb2_grpc
 
 class RentService(rent_pb2_grpc.RentServiceServicer):
     def CheckAvailability(self, request, context):
