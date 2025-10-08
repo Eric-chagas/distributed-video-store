@@ -395,11 +395,11 @@ Fica claro que cada situação pode demandar um tipo diferente de chamada, minha
 ### 3.2. Estrutura dos Módulos Backend (P, A e B)
 
 - **Módulo P (API Gateway / gRPC Stub):**  
-  Recebe requisições HTTP (`GET /api/movies/:id` e `GET /api/rent/check_availability/:id`), chama os serviços A e B via gRPC, consolida os dados (metadados + disponibilidade/preço) e retorna a resposta em JSON.  
+  Recebe requisições HTTP (`GET /api/movies/:id` e `GET /api/rent/consult/:id`), chama os serviços A e B via gRPC, consolida os dados (metadados + disponibilidade/preço) e retorna a resposta em JSON.  
   - **Framework:** FastAPI  
   - **Exemplos de rota:**
     - `http://localhost:8000/api/movies/1`
-    - `http://localhost:8000/api/rent/check-availability/1`  
+    - `http://localhost:8000/api/rent/consult/1`  
 
 - **Módulo A (gRPC Server - Catálogo):**  
   Implementado em Go. Retorna informações estáticas de filmes (título, gênero, ano de lançamento, duração).

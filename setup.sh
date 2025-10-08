@@ -19,3 +19,27 @@ protol \
 # generate protobuffer files for Go lang on both services
 protoc -I=./protos --go_out=paths=source_relative:./catalogue-service/proto_generated/ --go-grpc_out=paths=source_relative:./catalogue-service/proto_generated/ ./protos/catalogue.proto
 protoc -I=./protos --go_out=paths=source_relative:./rent-service/proto_generated/ --go-grpc_out=paths=source_relative:./rent-service/proto_generated/ ./protos/rent.proto
+
+# Build and run front-end and mapped port 5173
+docker build -t video-store-frontend:latest ./frontend/
+docker run -dit -p 5173:5173 --name video-store-frontend-container video-store-frontend:latest
+
+# Start minikube cluster and switching to k8s context
+minikube start
+
+# Build docker images for backend
+eval $(minikube docker-env)
+docker build -t api-gateway:latest ./api-gateway
+docker build -t catalogue-service:latest ./catalogue-service
+docker build -t rent-service:latest ./rent-service
+
+# Apply k8s manifest files
+kubectl apply -Rf manifest/
+
+# Sleep 10 seconds to wait for running pods
+sleep 10
+
+# Port forward for front-end connection and run in new terminal
+kubectl port-forward svc/api-gateway-service 8000:8000
+
+

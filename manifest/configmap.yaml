@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: services-config
+data:
+  CATALOGUE_SERVICE_HOST: "catalogue-service"
+  CATALOGUE_SERVICE_PORT: "50051"
+  RENT_SERVICE_HOST: "rent-service"
+  RENT_SERVICE_PORT: "50052"
