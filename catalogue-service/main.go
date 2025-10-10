@@ -2,11 +2,13 @@ package main
 
 import (
 	"context"
+	catalogueproto "distributed-video-store/catalogue-service/proto_generated"
 	"fmt"
 	"log"
 	"net"
+
 	"google.golang.org/grpc"
-	catalogueproto "distributed-video-store/catalogue-service/proto_generated"
+	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 // Defining Movie response struct
@@ -56,6 +58,50 @@ func (s *server) GetMovie(ctx context.Context, req *catalogueproto.MovieRequest)
 		Genre: "N/A",
 		Year:  0,
 	}, nil
+}
+
+// Implements grpc stress test method defined in proto file method STREAM
+func (s *server) GRPCStressTestStream(in *emptypb.Empty, stream catalogueproto.CatalogueService_GRPCStressTestStreamServer) error {
+	log.Println("Iniciando GRPCStressTest streaming...")
+
+	for i := 1; i <= 100000; i++ {
+		resp := &catalogueproto.MovieResponse{
+			Id:    int32(i),
+			Title: fmt.Sprintf("Movie %d", i),
+			Genre: "Drama",
+			Year:  2000 + int32(i%20),
+		}
+
+		if err := stream.Send(resp); err != nil {
+			return fmt.Errorf("erro ao enviar resposta: %v", err)
+		}
+
+	}
+
+	log.Println("Streaming finalizado com sucesso.")
+	return nil
+}
+
+// Implements grpc stress test method defined in proto file method UNARY
+func (s *server) GRPCStressTestUnary(ctx context.Context, in *emptypb.Empty) (*catalogueproto.MovieListResponse, error) {
+	log.Println("Iniciando GRPCStressTest com lista única...")
+
+	movies := make([]*catalogueproto.MovieResponse, 0, 100000)
+
+	for i := 1; i <= 100000; i++ {
+		movie := &catalogueproto.MovieResponse{
+			Id:    int32(i),
+			Title: fmt.Sprintf("Movie %d", i),
+			Genre: "Drama",
+			Year:  2000 + int32(i%20),
+		}
+		movies = append(movies, movie)
+	}
+
+	log.Printf("Gerados %d filmes.\n", len(movies))
+	log.Println("Retornando lista completa...")
+
+	return &catalogueproto.MovieListResponse{Movies: movies}, nil
 }
 
 // Run main

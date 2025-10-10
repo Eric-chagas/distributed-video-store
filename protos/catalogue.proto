@@ -2,10 +2,15 @@ syntax = "proto3";
 
 package catalogue;
 
+import "google/protobuf/empty.proto";
+
 option go_package = "distributed-video-store/catalogue-service/proto_generated;catalogueproto";
 
 service CatalogueService {
   rpc GetMovie (MovieRequest) returns (MovieResponse);
+  rpc GRPCStressTestStream (google.protobuf.Empty) returns (stream MovieResponse);
+  rpc GRPCStressTestUnary (google.protobuf.Empty) returns (MovieListResponse);
+
 }
 
 message MovieRequest {
@@ -17,4 +22,9 @@ message MovieResponse {
   string title = 2;
   string genre = 3;
   int32 year = 4;
+}
+
+// Message Server response with a list of movies
+message MovieListResponse {
+    repeated MovieResponse movies = 1;
 }
