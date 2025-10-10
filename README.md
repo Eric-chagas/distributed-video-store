@@ -5,6 +5,7 @@ Projeto de locadora e loja virtual de filmes utilizando conceitos de computaçã
 - **Professor:** Prof. Fernando W. Cruz  
 - **Aluno:** Eric Chagas de Oliveira  
 - **Matrícula:** 180119508
+- **Link do vídeo de apresentação**: https://youtu.be/Evx_FKEMHno
 
 ## Descrição do Projeto
 
