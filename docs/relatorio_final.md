@@ -11,8 +11,6 @@
 |**Link do repositório**|https://github.com/Eric-chagas/distributed-video-store|
 |**Link do vídeo de apresentação**|#TODO: Adicionar vídeo|
 
----
-
 ## 1. Introdução
 
 Esse relatório descreve o desenvolvimento de um sistema distribuído de uma loja e locadora de filmes virtual. A aplicação “Distributed Video Store” desenvolvida para o trabalho, é baseada em microserviços e foi utilizado o framework gRPC, com posterior empacotamento em contêineres e deploy em um ambiente de Kubernetes simulado localmente com o Minikube.

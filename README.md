@@ -31,7 +31,7 @@ O sistema será distribuído e baseado em **microserviços**, será utilizado o 
 ## Stack tecnológica do projeto
 
 | Tecnologia | Função |
-| :--- | :--- | :--- |
+| :--- | :--- | 
 | **gRPC** | Comunicação entre microserviços |
 | **Protocol Buffers (Protobuf)** | Serialização de dados |
 | **HTTP/2** | Transporte de dados binários |
