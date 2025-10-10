@@ -28,6 +28,10 @@ O sistema será distribuído e baseado em **microserviços**, será utilizado o 
 | **Catalogue Service (Microserviço 1)** | É a implementação do microsserviço **A**, que gerencia catálogo de vídeos | Go gRPC server | Go lang |
 | **Rent Service (Microserviço 2)** | É a implementação do microsserviço **B**, que  gerencia informações de clientes e pedidos | Go gRPC server | Go lang |
 
+
+###### Figura 01 - Arquitetura Sugerida
+![proj architecture](assets/architecture.png)
+
 ## Stack tecnológica do projeto
 
 | Tecnologia | Função |
