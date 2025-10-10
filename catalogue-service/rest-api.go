@@ -53,7 +53,7 @@ func runStressTest(c* gin.Context){
 
 func main() {
 	router := gin.Default()
-	router.GET("rest/movies/", getMoviesRest)
-	router.GET("rest/stress-test", runStressTest)
-	router.Run("localhost:8080")
+	router.GET("/rest/movies/", getMoviesRest)
+	router.GET("/rest/stress-test", runStressTest)
+	router.Run("0.0.0.0:8080")
 }

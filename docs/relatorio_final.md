@@ -8,6 +8,8 @@
 | **Professor** | Prof. Fernando W. Cruz |
 | **Aluno** | Eric Chagas de Oliveira |
 | **Matrícula** | 180119508 |
+|**Link do repositório**|https://github.com/Eric-chagas/distributed-video-store|
+|**Link do vídeo de apresentação**|#TODO: Adicionar vídeo|
 
 ---
 
@@ -47,10 +49,10 @@ Para esse trabalho foi construida uma pequena aplicações cliente-servidor, com
 
 | Tipo de Comunicação | Funcionamento | Arquivo Protobuf e Código de Teste | Conclusão e Cenários de Uso Recomendados |
 | :--- | :--- | :--- | :--- |
-| **Unary Call** | Cliente envia uma requisição e recebe uma resposta única. | [`unary-call/movie_info.proto`](#TODO:Adicionar_link_direto_arquivo_github) | Ideal para operações simples de consulta ou cadastro. |
-| **Server-Streaming Call** | Cliente envia uma requisição e recebe múltiplas respostas em *stream*. | [`server-streaming/movie_info.proto`](#TODO:Adicionar_link_direto_arquivo_github) | Útil para relatórios, logs contínuos ou notificações. |
-| **Client-Streaming Call** | Cliente envia múltiplas requisições e recebe uma resposta única consolidada. | [`client-streaming/movie_info.proto`](#TODO:Adicionar_link_direto_arquivo_github) | Adequado para upload de arquivos ou envio de lotes de dados. |
-| **Bidirectional Streaming Call** | Cliente e servidor trocam múltiplas mensagens simultaneamente. | [`bidirectional-streaming/movie_info.proto`](#TODO:Adicionar_link_direto_arquivo_github) | Perfeito para chats em tempo real ou monitoramento contínuo. |
+| **Unary Call** | Cliente envia uma requisição e recebe uma resposta única. | `unary-call/movie_info.proto` | Ideal para operações simples de consulta ou cadastro. |
+| **Server-Streaming Call** | Cliente envia uma requisição e recebe múltiplas respostas em *stream*. | `server-streaming/movie_info.proto` | Útil para relatórios, logs contínuos ou notificações. |
+| **Client-Streaming Call** | Cliente envia múltiplas requisições e recebe uma resposta única consolidada. | `client-streaming/movie_info.proto` | Adequado para upload de arquivos ou envio de lotes de dados. |
+| **Bidirectional Streaming Call** | Cliente e servidor trocam múltiplas mensagens simultaneamente. | `bidirectional-streaming/movie_info.proto` | Perfeito para chats em tempo real ou monitoramento contínuo. |
 
 Também linkado na **Tabela 01** está o endereço no github onde foram armazenados os arquivos de da demonstração. Os arquivos são os seguintes:
 
@@ -195,10 +197,6 @@ Fica claro que cada situação pode demandar um tipo diferente de chamada, minha
 
 ## 3. Construção da Aplicação Cliente/Servidor com gRPC
 
-###### Figura 05 - Arquitetura da aplicação distribuída gRPC. Fonte: Autoria própria.
-
-#TODO: ADICIONAR DESENHO
-
 ### 3.1. Detalhes da Aplicação Distributed Video Store
 
   O sistema simula uma loja de vídeos distribuída, permitindo consultar informações sobre filmes, combinando dados provenientes de dois microserviços independentes:  
@@ -227,13 +225,56 @@ Fica claro que cada situação pode demandar um tipo diferente de chamada, minha
 - **Módulo B (gRPC Server - Estoque):**  
   Também implementado em Go. Retorna disponibilidade (em estoque ou não), preço de aluguel e possíveis promoções.
 
-## 4. Implantação e Orquestração com Kubernetes
+
+## 4. Comparativo de Performance entre gRPC e Rest
+
+Para avaliar o desempenho da aplicação Distributed Video Store por meio de um "teste de estresse" foi implementada uma API rest em Go no serviço catalogue-service, e dois métodos novos no servidor gRPC do catalogue-service.  
+
+- **API REST/JSON:** comunicação entre o API Gateway (P) e o microsserviço `catalogue-service` via HTTP/JSON.  
+- **Versão gRPC:** comunicação via gRPC, testando dois modos:
+  - **Unary Call:** retorno de todos os filmes em uma única resposta.
+  - **Server Streaming:** envio dos filmes um a um através de stream.
+
+### 4.1. Cenário de Teste
+
+- Quantidade de filmes solicitados: **100000** e **500000**  
+- Mesma infraestrutura local (Minikube/localhost)  
+- Medição do **tempo de resposta total** para cada abordagem na ferramenta postman.
+
+### 4.2. Resultados
+
+#### Testes com 100000 resultados
+| Versão / Protocolo        | Tempo de Resposta | Nº de Resultados |
+|----------------------------|-----------------------|-----------------|
+| REST/JSON                  | 1.05 s                  | 100000         |
+| gRPC Unary                 | 0.918 s                | 100000         |
+| gRPC Server Stream         | 4.45 s                  | 100000         |
+
+
+#### Testes com 500000 resultados
+| Versão / Protocolo        | Tempo de Resposta | Nº de Resultados |
+|----------------------------|-----------------------|-----------------|
+| REST/JSON                  | 5.26 s                  | 500000         |
+| gRPC Unary                 | 4.39 s                | 500000         |
+| gRPC Server Stream         | 25.24 s                  | 500000         |
+
+> Observação: os valores são aproximados, representando a tendência observada nos testes.  
+
+### 4.3. Análise e Conclusão
+
+- O **gRPC Unary** apresentou desempenho muito próximo do REST/JSON, com apenas uma leve diferença devido à serialização binária do Protobuf.  
+- O **Server Streaming** demonstrou maior tempo de resposta, principalmente pelo envio individual de cada registro, que introduz overhead de chamadas repetidas no transporte.  
+- Conclui-se que para grandes volumes de dados, se a aplicação não precisa processar cada item em tempo real, a **chamada Unary gRPC** ou **REST/JSON** são mais eficientes. O **Streaming** é útil quando há necessidade de processamento progressivo ou transmissão contínua de dados.
+
+Os testes possuem o viés de serem executados no ambiente local do desenvolvedor, por mais que tenha sido utilizado o kubernetes. É notável pelos testes que o gRPC em geral, quando usado corretamente, performa melhor, a tendência é que à medida que crescem as distâncias percorridas na rede e a quantidade de dados trafegados, a otimização da serialização do protobuffer torne-se mais perceptível.
+
+## 5. Implantação e Orquestração com Kubernetes
 
 Para garantir escalabilidade, isolamento e facilidade de gerenciamento dos microserviços desenvolvidos, o ambiente foi orquestrado utilizando o **Kubernetes**, executado localmente através do **Minikube**.
 
 A arquitetura foi estruturada em três componentes principais: **API Gateway**, **Catalogue Service** e **Rent Service** cada um executando em um contêiner independente, gerenciado por um **Deployment** e exposto por um **Service**. Também foi utilizado um **ConfigMap** para centralizar as variáveis de ambiente responsáveis por definir os hosts e portas de comunicação entre os serviços.
 
-### 4.1. Arquitetura do Ambiente
+### 5.1. Arquitetura do Ambiente
 
 - **API Gateway**  
   - Responsável por receber as requisições REST externas e orquestrar chamadas gRPC para os serviços internos.  
@@ -242,6 +283,10 @@ A arquitetura foi estruturada em três componentes principais: **API Gateway**, 
 
 - **Catalogue Service**  
   - Serviço gRPC responsável por fornecer os metadados dos filmes.  
+  - Exposto apenas internamente por meio de um **Service do tipo ClusterIP**, garantindo comunicação restrita dentro do cluster.  
+
+- **Catalogue Rest Service**  
+  - Serviço gRPC responsável pelos testes de estresse rest.  
   - Exposto apenas internamente por meio de um **Service do tipo ClusterIP**, garantindo comunicação restrita dentro do cluster.  
 
 - **Rent Service**  
@@ -255,18 +300,28 @@ A arquitetura foi estruturada em três componentes principais: **API Gateway**, 
     CATALOGUE_SERVICE_PORT: "50051"
     RENT_SERVICE_HOST: "rent-service"
     RENT_SERVICE_PORT: "50052"
+    CATALOGUE_REST_SERVICE_HOST: "catalogue-rest-service"
+    CATALOGUE_REST_SERVICE_PORT: "8080"
     ```
   - Compartilhado entre os contêineres que necessitam dessas informações.
 
-### 4.2. Arquivos de Configuração
+### 6.2. Arquivos de Configuração
 
 Os arquivos YAML definem os recursos do cluster:
 - **Deployments**: especificam as imagens dos contêineres, número de réplicas, recursos de CPU/memória e variáveis de ambiente.  
 - **Services**: configuram as portas de comunicação entre os módulos.  
 - **ConfigMap**: centraliza parâmetros reutilizados pelos serviços.  
 
-### 4.3. Resultados e Observações
+### 6.3. Resultados e Observações
 
 - O **API Gateway** é acessível externamente via port forward, tornando possível consumir a API REST pela máquina local.
 - Os serviços **Catalogue** e **Rent** se comunicam internamente com o gateway por meio dos nomes e portas presentes no **ConfigMap**.
 - O script `setup.sh` e o script `destroy.sh`, permitem respectivamente subir e destruir o ambiente local completo com apenas um comando
+
+## 7. Conclusão e relato do desenvolvedor: Eric
+
+A experiência de desenvolver esse trabalho foi bem cansativa, porém muito enriquecedora. Havia algum tempo que não desenvolvia um sistema como esse "do zero" sozinho, e tive a oportunidade de construir todas as etapas, tanto da infra-estrutura quanto dos serviços em si, e me sinto satisfeito com o resultado.
+
+Quanto ao gRPC, iniciei o projeto com conhecimento básico e absolutamente nenhuma experiência prática, e foi muito interessante entender como cada parte do protocolo funciona, e ver isso funcionando depois de implementar, é um recurso que não utilizo hoje no dia-a-dia e nunca tinha tido contato com no mercado de trabalho, porém vejo um potêncial grande quando usado corretamente, como exemplifiquei na seção de teste de estresse.
+
+Me sinto gratificado com essa experiência, que foi extremamente trabalhosa, mas de enorme valor para mim como programador. Por ter feito o trabalho sozinho, sentir que consegui cumprir todos os requisitos pedidos e ter dedicado um enorme esforço, minha auto-avaliação é nota 10.

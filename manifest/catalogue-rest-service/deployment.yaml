@@ -1,0 +1,27 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: catalogue-rest-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: catalogue-rest
+  template:
+    metadata:
+      labels:
+        app: catalogue-rest
+    spec:
+      containers:
+        - name: catalogue-rest
+          image: catalogue-rest-service:latest
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 50051
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"

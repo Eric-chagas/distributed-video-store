@@ -28,24 +28,19 @@ O sistema será distribuído e baseado em **microserviços**, será utilizado o 
 | **Catalogue Service (Microserviço 1)** | É a implementação do microsserviço **A**, que gerencia catálogo de vídeos | Go gRPC server | Go lang |
 | **Rent Service (Microserviço 2)** | É a implementação do microsserviço **B**, que  gerencia informações de clientes e pedidos | Go gRPC server | Go lang |
 
-### Desenho de Arquitetura
-
-TODO: Elaborar e adicionar desenho
-
 ## Stack tecnológica do projeto
 
-| Tecnologia | Função | Versão |
+| Tecnologia | Função |
 | :--- | :--- | :--- |
-| **gRPC** | Comunicação entre microserviços | TODO |
-| **Protocol Buffers (Protobuf)** | Serialização de dados | TODO |
-| **HTTP/2** | Transporte de dados binários | TODO |
-| **Docker** | Contêineres para cada módulo | TODO |
-| **Minikube (K8s)** | Orquestração e deploy local | TODO |
-| **Go lang** | Implementação do microserviço A | TODO |
-|**Fast API**| Implementação do API gateway| TODO |
-| **Go lang** | Implementação do microserviço B | TODO |
-| **VueJs** | Implementação dos front-end | TODO |
-
+| **gRPC** | Comunicação entre microserviços |
+| **Protocol Buffers (Protobuf)** | Serialização de dados |
+| **HTTP/2** | Transporte de dados binários |
+| **Docker** | Contêineres para cada módulo |
+| **Minikube (K8s)** | Orquestração e deploy local |
+| **Go lang** | Implementação do microserviço A |
+|**Fast API**| Implementação do API gateway |
+| **Go lang** | Implementação do microserviço B |
+| **VueJs** | Implementação dos front-end |
 
 
 ## Funcionalidades Principais
@@ -61,4 +56,26 @@ Em geral, é comum utilizar ambientes com múltiplos repositórios para aplicaç
 
 ## Como Executar 
 
-TODO: instruções de setup e reprodução
+### Pré-requisitos
+
+- **Python 3.11+** e **pip**
+- **Virtualenv** (`python3 -m pip install virtualenv`)
+- **Go 1.22+**
+- **Docker**
+- **Minikube** e **kubectl**
+- **protoc** (Protocol Buffers Compiler)
+
+### Para subir o ambiente: Executar o script `setup.sh` para subir a infra completa e todos os serviços
+
+```bash
+sudo chmod +x ./setup.sh
+./setup.sh
+```
+
+### Para destruir o ambiente: Executar o script `destroy.sh` para derrubar a infra e os serviços
+
+```bash
+sudo chmod +x ./destroy.sh
+./destroy.sh
+```
+

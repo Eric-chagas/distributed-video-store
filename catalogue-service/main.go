@@ -112,7 +112,11 @@ func main() {
 		log.Fatalf("Failed to get Catalogue Server running on port 50051: %v", err)
 	}
 
-	s := grpc.NewServer()
+	s := grpc.NewServer(
+		grpc.MaxRecvMsgSize(500*1024*1024),
+    	grpc.MaxSendMsgSize(500*1024*1024),
+	)
+	
 	catalogueproto.RegisterCatalogueServiceServer(s, &server{})
 
 	fmt.Println("Catalogue Service listening on port 50051...")

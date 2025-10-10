@@ -6,9 +6,12 @@ import os
 
 catalogue_host = os.getenv("CATALOGUE_SERVICE_HOST", "localhost")
 catalogue_port = os.getenv("CATALOGUE_SERVICE_PORT", "50051")
+options = [
+    ('grpc.max_receive_message_length', 500 * 1024 * 1024),  # 500 MB
+]
 
 def get_movie(movie_id: int):
-    with grpc.insecure_channel(f'{catalogue_host}:{catalogue_port}') as channel:
+    with grpc.insecure_channel(f'{catalogue_host}:{catalogue_port}', options=options) as channel:
         stub = catalogue_pb2_grpc.CatalogueServiceStub(channel)
         response = stub.GetMovie(catalogue_pb2.MovieRequest(id=movie_id))
         return {
@@ -20,7 +23,7 @@ def get_movie(movie_id: int):
         
 # Calls grpc catalogue server for stress test with bigger response SERVER STREAM
 def grpc_stress_test_stream():
-    with grpc.insecure_channel(f'{catalogue_host}:{catalogue_port}') as channel:
+    with grpc.insecure_channel(f'{catalogue_host}:{catalogue_port}', options=options) as channel:
         stub = catalogue_pb2_grpc.CatalogueServiceStub(channel)
         responses = stub.GRPCStressTestStream(Empty())
         movies = []
@@ -35,7 +38,7 @@ def grpc_stress_test_stream():
 
 # Calls grpc catalogue server for stress test with bigger response UNARY CALL
 def grpc_stress_test_unary():
-    with grpc.insecure_channel(f"{catalogue_host}:{catalogue_port}") as channel:
+    with grpc.insecure_channel(f"{catalogue_host}:{catalogue_port}", options=options) as channel:
         stub = catalogue_pb2_grpc.CatalogueServiceStub(channel)
         # Chama o método que agora retorna MovieList
         response = stub.GRPCStressTestUnary(Empty())

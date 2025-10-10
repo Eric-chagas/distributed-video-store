@@ -3,7 +3,12 @@ kind: ConfigMap
 metadata:
   name: services-config
 data:
+  # gRPC
   CATALOGUE_SERVICE_HOST: "catalogue-service"
   CATALOGUE_SERVICE_PORT: "50051"
   RENT_SERVICE_HOST: "rent-service"
   RENT_SERVICE_PORT: "50052"
+
+  # Rest
+  CATALOGUE_REST_SERVICE_HOST: "catalogue-rest-service"
+  CATALOGUE_REST_SERVICE_PORT: "8080"

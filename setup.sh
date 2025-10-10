@@ -30,7 +30,8 @@ minikube start
 # Build docker images for backend
 eval $(minikube docker-env)
 docker build -t api-gateway:latest ./api-gateway
-docker build -t catalogue-service:latest ./catalogue-service
+docker build -t catalogue-service:latest -f ./catalogue-service/Dockerfile-grpc ./catalogue-service
+docker build -t catalogue-rest-service:latest -f ./catalogue-service/Dockerfile-rest ./catalogue-service
 docker build -t rent-service:latest ./rent-service
 
 # Apply k8s manifest files
