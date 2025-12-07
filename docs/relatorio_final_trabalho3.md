@@ -105,8 +105,6 @@ Já com os serviços em execução, é possível verificar a distribuição dos 
 
 ## 4. Monitoramento e Observabilidade com Prometheus
 
-
-
 ### 4.1. Instrumentação da Aplicação (Módulos P, A e B)
 ### 4.2. Configuração e Uso do Prometheus
 ## 5. Aplicação Distributed Video Store - Versão Base
