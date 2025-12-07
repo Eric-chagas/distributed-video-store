@@ -64,7 +64,49 @@ Na tabela abaixo, está a nova stack tecnologica para o projeto final:
 
 ## 3. Experiência de Montagem do Kubernetes em Modo Cluster
 ### 3.1. Arquitetura do Cluster
+
+- **Plataforma de Execução:** O cluster foi implantado localmente utilizando **Kind (Kubernetes in Docker)**, aproveitando a infraestrutura de contêineres para executar o ambiente multi-node.
+- **Estrutura:** O cluster foi configurado com 1 Nó Mestre (Control Plane) e 2 Nós Escravos (Worker Nodes). 
+- **Passos da Instalação:** Conforme já era feito no projeto inicial do distributed video store, o provisionamento do ambiente completo é automático via shell script. Para a evolução do projeto de observabilidade, foi criado um novo script [setup_kind.sh](/setup_kind.sh), com base no script anterior para minikube, porém que agora executa o ambiente no Kind com os 3 nodes citados acima. O passo a passo do provisionamento do cluster é:
+  1. Criar o cluster: `kind create cluster --name $CLUSTER_NAME --config kind-config.yaml --wait 2m`
+  2. Realizar build das imagens do back normalmente
+  3. Carregar as imagens no cluster, distribuidas nos 2 nodes workers
+  ```bash
+  kind load docker-image api-gateway:latest --name $CLUSTER_NAME
+  kind load docker-image catalogue-service:latest --name $CLUSTER_NAME
+  kind load docker-image catalogue-rest-service:latest --name $CLUSTER_NAME
+  kind load docker-image rent-service:latest --name $CLUSTER_NAME
+  ```
+  4. Aplicar os manifestos no cluster
+Após isso o script segue como era antes, expondo um port-forward na porta 8000 para que o api-gateway esteja acessível fora do cluster.  
+- **Configuração do kind**: Foi adicionado o [kind-config.yaml](/kind-config.yaml) para configuração do Kind, definindo as portas de acesso aos nodes e os próprios nodes que serão criados:
+```bash
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: video-store-kind-cluster
+nodes:
+- role: control-plane
+  extraPortMappings:
+  - containerPort: 30000
+    hostPort: 30000
+    listenAddress: "127.0.0.1"
+    protocol: tcp
+- role: worker
+- role: worker
+```
+- **Recursos de Elasticidade**: O recurso principal utilizado para conferir elasticidade e resiliência à aplicação foi o Horizontal Pod Autoscaler (HPA).
+  - Serviços: O HPA foi aplicado aos Deployments dos serviços do back API Gateway, Catalogue Service (grpc), catalogue service (rest) e Rent Service.
+  - Métricas: A métrica primária utilizada para acionamento do autoscaling foi a Utilização Média da CPU, com um alvo de 50%.
+  - Configuração: O HPA foi configurado para permitir que o número de réplicas escalasse de 1 (mínimo) a 5 (máximo) Pods para cada um dos módulos alvos, para que o sistema consiga responder a picos de carga. 
+
+Já com os serviços em execução, é possível verificar a distribuição dos pods nos nodes e o status do autoscaling com os comandos mostrados abaixo:
+
+![Cluster status](/assets/trab3/autoscaling_and_pods.png)
+
 ## 4. Monitoramento e Observabilidade com Prometheus
+
+
+
 ### 4.1. Instrumentação da Aplicação (Módulos P, A e B)
 ### 4.2. Configuração e Uso do Prometheus
 ## 5. Aplicação Distributed Video Store - Versão Base

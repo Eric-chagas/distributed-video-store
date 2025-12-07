@@ -27,7 +27,7 @@ docker run -dit -p 5173:5173 --name video-store-frontend-container video-store-f
 CLUSTER_NAME="video-store-kind-cluster"
 echo "Starting k8s cluster in Kind (1 Control Plane, 2 Workers)..."
 
-kind create cluster --name $CLUSTER_NAME --config kind-config.yaml
+kind create cluster --name $CLUSTER_NAME --config kind-config.yaml --wait 2m
 
 # Build docker images for backend
 docker build -t api-gateway:latest ./api-gateway
