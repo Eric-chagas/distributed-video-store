@@ -106,7 +106,30 @@ Já com os serviços em execução, é possível verificar a distribuição dos 
 ## 4. Monitoramento e Observabilidade com Prometheus
 
 ### 4.1. Instrumentação da Aplicação (Módulos P, A e B)
+
+| Módulo/Serviço | Ferramenta | Tipo de Instrumentação | Porta do `/metrics` |
+| :--- | :--- | :--- | :--- |
+| **P** (API Gateway - FastAPI) | `prometheus-fastapi-instrumentator` | HTTP e Métrica Customizada (gRPC Client Latency) | `8000` |
+| **A** (Catalogue gRPC - Go) | `go-grpc-prometheus` | Interceptors gRPC (Server Latency/Volume) | `9090` |
+| **B** (Rent gRPC - Go) | `go-grpc-prometheus` | Interceptors gRPC (Server Latency/Volume) | `9091` |
+| **REST** (Catalogue REST - Go/Gin) | `github.com/zsais/go-gin-prometheus` | Middleware HTTP (Request Latency/Volume) | `8080` |
+
+* **Alterações Chave:**
+    * **Go Services:** Implementação de servidores HTTP secundários (`9090`/`9091`) para expor métricas, além do uso de *interceptors* gRPC.
+    * **FastAPI:** Uso do gerenciador de contexto **`lifespan`** para inicializar a instrumentação e criação da métrica customizada **`grpc_client_call_duration_seconds`** para rastrear a latência distribuída.
+
+* **Métricas Coletadas (Foco):**
+    * **Módulo P:** `http_request_duration_seconds` e **`grpc_client_call_duration_seconds`** (crucial para latência *end-to-end*).
+    * **Módulos A/B:** `grpc_server_handling_seconds` e `grpc_server_handled_total` (latência e volume de chamadas gRPC).
+    * **Todos:** Métricas de *runtime* (`go_goroutines`, `go_memstats_alloc_bytes`, etc.).
+
 ### 4.2. Configuração e Uso do Prometheus
+
+* **Instalação:** Prometheus, Alertmanager e Grafana foram instalados via **Helm chart `kube-prometheus-stack`**.
+* **Configuração de *Scrape*:** A descoberta de serviços (Service Discovery) foi realizada utilizando o recurso **`ServiceMonitor`** do *stack* do Prometheus.
+* **Alvos de *Scrape*:** O Prometheus foi direcionado para raspar as portas nomeadas (`9090`, `9091`, `8000`, `8080`) configuradas em cada **Deployment** da aplicação.
+* **Visualização:** Utilização do **Grafana** com *dashboards* customizados e da comunidade para correlacionar o desempenho da aplicação (latência) com o uso de recursos (*CPU/Memory*) durante os testes de carga, especialmente para validar a atuação do HPA. 
+
 ## 5. Aplicação Distributed Video Store - Versão Base
 
 * **Arquitetura:** Aplicação baseada em microserviços gRPC (P, A e B) com Gateway REST (P).

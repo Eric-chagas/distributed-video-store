@@ -11,7 +11,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/types/known/emptypb"
 
-	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus" // [ADICIONADO] Interceptors GRPC
+	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 

@@ -4,9 +4,24 @@ from src.grpc_clients.catalogue_client import get_movie, grpc_stress_test_stream
 from src.grpc_clients.rent_client import check_availability
 from src.rest_clients.stress_test import rest_stress_test
 from fastapi.middleware.cors import CORSMiddleware
+from prometheus_client import Summary, Counter
+from prometheus_fastapi_instrumentator import Instrumentator
+from contextlib import asynccontextmanager
 
+GRPC_CALL_LATENCY = Summary(
+    'grpc_client_call_duration_seconds', 
+    'Tempo de resposta das chamadas GRPC de cliente para Catalogue/Rent', 
+    ['service', 'method'] # Labels para categorizar a chamada (qual serviço/método)
+)
 
-app = FastAPI(title="Distributed Video Store API Gateway")
+@asynccontextmanager
+async def lifespan_event_handler(app: FastAPI):
+    
+    print("Prometheus metrics exposed in /metrics")
+    yield
+    print("api shutting down")
+
+app = FastAPI(title="Distributed Video Store API Gateway", lifespan=lifespan_event_handler)
 
 # CORS config
 # origins = [
@@ -21,6 +36,12 @@ app.add_middleware(
     allow_methods=["*"],  # Allows all methods (GET, POST, PUT, DELETE, etc.)
     allow_headers=["*"],  # Allows all headers
 )
+
+Instrumentator().instrument(app).expose(
+    app, 
+    endpoint="/metrics", 
+)
+print("Prometheus metrics middleware added and exposed in /metrics")
 
 
 @app.get("/")

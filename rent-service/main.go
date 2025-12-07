@@ -67,7 +67,7 @@ func main() {
 	go func() {
         log.Println("Rent service: Prometheus metrics server starting on port 9091...")
         http.Handle("/metrics", promhttp.Handler())
-        // Prometheus scrape in port 9090
+        // Prometheus scrape in port 9091
         if err := http.ListenAndServe(":9091", nil); err != nil { 
             log.Fatalf("Failed to run Prometheus metrics server: %v", err)
         }
