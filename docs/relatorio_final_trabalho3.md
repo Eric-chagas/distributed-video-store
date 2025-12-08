@@ -105,30 +105,39 @@ Já com os serviços em execução, é possível verificar a distribuição dos 
 
 ## 4. Monitoramento e Observabilidade com Prometheus
 
-### 4.1. Instrumentação da Aplicação (Módulos P, A e B)
+### 4.1. Instrumentação da Aplicação (Módulos P, A, B e REST)
 
-| Módulo/Serviço | Ferramenta | Tipo de Instrumentação | Porta do `/metrics` |
+A aplicação foi instrumentada para expor métricas críticas via endpoint `/metrics` nas portas listadas abaixo.
+
+| Serviço | Ferramenta | Tipo de Instrumentação | Porta do `/metrics` |
 | :--- | :--- | :--- | :--- |
-| **P** (API Gateway - FastAPI) | `prometheus-fastapi-instrumentator` | HTTP e Métrica Customizada (gRPC Client Latency) | `8000` |
-| **A** (Catalogue gRPC - Go) | `go-grpc-prometheus` | Interceptors gRPC (Server Latency/Volume) | `9090` |
-| **B** (Rent gRPC - Go) | `go-grpc-prometheus` | Interceptors gRPC (Server Latency/Volume) | `9091` |
-| **REST** (Catalogue REST - Go/Gin) | `github.com/zsais/go-gin-prometheus` | Middleware HTTP (Request Latency/Volume) | `8080` |
+| **P** (API Gateway) | `fastapi-instrumentator` | HTTP e **Latência gRPC Cliente** (`8000`) | `8000` |
+| **A/B** (gRPC Servers) | `go-grpc-prometheus` | Interceptors gRPC (Latência/Volume) | `9090` / `9091` |
+| **REST** (Catalogue) | `go-gin-prometheus` | Middleware HTTP | `8080` |
 
-* **Alterações Chave:**
-    * **Go Services:** Implementação de servidores HTTP secundários (`9090`/`9091`) para expor métricas, além do uso de *interceptors* gRPC.
-    * **FastAPI:** Uso do gerenciador de contexto **`lifespan`** para inicializar a instrumentação e criação da métrica customizada **`grpc_client_call_duration_seconds`** para rastrear a latência distribuída.
+* **Métricas Foco:** A principal métrica customizada utilizada foi `grpc_client_call_duration_seconds` (Módulo P) para rastreamento de latência end-to-end.
 
-* **Métricas Coletadas (Foco):**
-    * **Módulo P:** `http_request_duration_seconds` e **`grpc_client_call_duration_seconds`** (crucial para latência *end-to-end*).
-    * **Módulos A/B:** `grpc_server_handling_seconds` e `grpc_server_handled_total` (latência e volume de chamadas gRPC).
-    * **Todos:** Métricas de *runtime* (`go_goroutines`, `go_memstats_alloc_bytes`, etc.).
+### 4.2. Configuração do Scraping e Observabilidade
 
-### 4.2. Configuração e Uso do Prometheus
+A stack de monitoramento foi implantada utilizando o **Helm chart `kube-prometheus-stack`**.
 
-* **Instalação:** Prometheus, Alertmanager e Grafana foram instalados via **Helm chart `kube-prometheus-stack`**.
-* **Configuração de *Scrape*:** A descoberta de serviços (Service Discovery) foi realizada utilizando o recurso **`ServiceMonitor`** do *stack* do Prometheus.
-* **Alvos de *Scrape*:** O Prometheus foi direcionado para raspar as portas nomeadas (`9090`, `9091`, `8000`, `8080`) configuradas em cada **Deployment** da aplicação.
-* **Visualização:** Utilização do **Grafana** com *dashboards* customizados e da comunidade para correlacionar o desempenho da aplicação (latência) com o uso de recursos (*CPU/Memory*) durante os testes de carga, especialmente para validar a atuação do HPA. 
+#### Ativação do Scraping (ServiceMonitor e Prometheus)
+
+O Service Discovery do Prometheus foi configurado através de **ServiceMonitors** (CRDs), que buscam Services pelos labels. Foram necessárias algumas correções de mapeamento nos manifests para a ativação completa do scraping:
+
+1.  **Timing:** Adição de um delay de 60 segundos no script de setup após a instalação do Helm para garantir o registro dos CRDs de **`ServiceMonitor`** no Kubernetes.
+2.  **Mapeamento de Service:** Foi necessária a adição da label **`metadata.labels: app: [nome-do-app]`** nos manifestos de **Service** K8s, pois o ServiceMonitor usa essa label para localizar os serviços de target.
+
+#### Visualização (Grafana)
+
+O **Grafana** foi configurado automaticamente pelo stack do Helm, usando o Prometheus como fonte de dados. A instrumentação no Grafana focou em:
+
+* **Validação do HPA:** Dashboards para monitorar o uso de **CPU** por Deployment para verificar o autoscaling.
+* **Análise de Desempenho:** Painéis customizados para rastrear a latência distribuída (`grpc_client_call_duration_seconds` e `grpc_server_handling_seconds`) sob estresse.
+
+Na imagem abaixo pode ser visualizado o painel web do prometheus, já dentro do cluster, com todos os serviços tendo as métricas sondadas pelo prometheus (frequencia é a cada 10s).
+
+![Targets prometheus](/assets/trab3/targets_prometheus.png)
 
 ## 5. Aplicação Distributed Video Store - Versão Base
 

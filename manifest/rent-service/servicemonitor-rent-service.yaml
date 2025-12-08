@@ -1,0 +1,18 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: rent-service-monitor
+  namespace: default 
+  labels:
+    release: monitoring-stack
+spec:
+  selector:
+    matchLabels:
+      app: rent
+  endpoints:
+  - port: metrics
+    path: /metrics
+    interval: 10s
+  namespaceSelector:
+    matchNames:
+    - default

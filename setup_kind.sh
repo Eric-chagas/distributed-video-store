@@ -41,11 +41,35 @@ kind load docker-image catalogue-service:latest --name $CLUSTER_NAME
 kind load docker-image catalogue-rest-service:latest --name $CLUSTER_NAME
 kind load docker-image rent-service:latest --name $CLUSTER_NAME
 
+echo "adding prometheus helm repo"
+helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+helm repo update
+
+echo "New monitoring namespace and installing stack kube-prometheus..."
+kubectl create namespace monitoring
+
+helm install monitoring-stack prometheus-community/kube-prometheus-stack --namespace monitoring --wait
+
+sleep 30
+
 # Apply k8s manifest files
 kubectl apply -Rf manifest/
 
 # Sleep 10 seconds to wait for running pods
 sleep 10
+
+# Graphana access
+
+echo "--- Access to Grafana ---"
+echo "Open port-forward in new terminal for graphana access:"
+echo "kubectl port-forward svc/monitoring-stack-grafana 3000:80 -n monitoring"
+
+echo "Creds:"
+echo "Username: admin"
+echo "Password:"
+kubectl get secret monitoring-stack-grafana -n monitoring -o jsonpath="{.data.admin-password}" | base64 --decode
+echo ""
+echo "-----------------------------------"
 
 # Port forward for front-end connection and run in new terminal
 kubectl port-forward svc/api-gateway-service 8000:8000

@@ -17,7 +17,7 @@ spec:
           image: catalogue-rest-service:latest
           imagePullPolicy: Never
           ports:
-            - containerPort: 50051
+            - containerPort: 8080
           resources:
             requests:
               cpu: "100m"
