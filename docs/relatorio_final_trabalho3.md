@@ -8,7 +8,7 @@
 | **Professor** | Prof. Fernando W. Cruz |
 | **Grupo** | Eric Chagas de Oliveira - 180119508 |
 |**Link do repositório**|[Repositório](https://github.com/Eric-chagas/distributed-video-store)|
-|**Link do vídeo de apresentação**|`#TODO: Adicionar link do vídeo`|
+|**Link do vídeo de apresentação**| [Vídeo de apresentação](https://youtu.be/ABcKBYhVCx0) |
 |**Ferramenta de Teste de Carga**| [Locust](https://locust.io/) |
 
 
