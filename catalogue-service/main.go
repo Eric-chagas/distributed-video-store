@@ -133,6 +133,8 @@ func main() {
         grpc.UnaryInterceptor(grpc_prometheus.UnaryServerInterceptor),
 	)
 
+	grpc_prometheus.EnableHandlingTimeHistogram()
+
 	grpc_prometheus.Register(s)
 	
 	catalogueproto.RegisterCatalogueServiceServer(s, &server{})

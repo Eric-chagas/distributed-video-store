@@ -115,7 +115,9 @@ A aplicação foi instrumentada para expor métricas críticas via endpoint `/me
 | **A/B** (gRPC Servers) | `go-grpc-prometheus` | Interceptors gRPC (Latência/Volume) | `9090` / `9091` |
 | **REST** (Catalogue) | `go-gin-prometheus` | Middleware HTTP | `8080` |
 
-* **Métricas Foco:** A principal métrica customizada utilizada foi `grpc_client_call_duration_seconds` (Módulo P) para rastreamento de latência end-to-end.
+###### Tabela 03 - Instrumentação do prometheus e scraping de métricas. Fonte: Autoria própria
+
+As métricas escolhidas como foco do teste de carga estão na seção 6.
 
 ### 4.2. Configuração do Scraping e Observabilidade
 
@@ -139,20 +141,229 @@ Na imagem abaixo pode ser visualizado o painel web do prometheus, já dentro do 
 
 ![Targets prometheus](/assets/trab3/targets_prometheus.png)
 
-## 5. Aplicação Distributed Video Store - Versão Base
+## 5. Aplicação Base e Evolução
 
-* **Arquitetura:** Aplicação baseada em microserviços gRPC (P, A e B) com Gateway REST (P).
-* **Comunicação:** Chamadas **Unary gRPC** entre o Módulo P e os Módulos A/B.
-* **Configuração Base:** A aplicação foi instanciada com **1 réplica de cada Pod (P, A, B)** e recursos mínimos, garantindo apenas a distribuição inerente ao gRPC e K8S.
+### Comparativo da Arquitetura: Versão Base vs. Versão Evoluída
 
-## 6. Cenários de Teste, Resultados e Conclusões
-### 6.1. Ferramenta de Teste de Carga
-### 6.2. Cenário Base (Linha de Referência)
-### 6.3. Cenários Variáveis e Análise Comparativa
-#### Cenário A: nome cenario
+| Característica | 5.1 Versão Base (Setup Inicial) | 5.2 Versão Evoluída (Multinode e Observabilidade) |
+| :--- | :--- | :--- |
+| **Ambiente K8s** | 1 nó (Setup de Desenvolvimento) | **Múltiplos Nós** (1 Control Plane, 2 Workers) |
+| **Escalabilidade** | Configuração estática: **1 réplica por Pod (P, A, B)**. | **Horizontal Pod Autoscaler (HPA)** no **API Gateway (Módulo P)**. |
+| **Mecanismo HPA** | N/A | Alvo de **Utilização de CPU** para escalonamento automático de réplicas. |
+| **Monitoramento** | N/A (Apenas logs e status K8s) | **Prometheus** (Instalado via `kube-prometheus-stack`). |
+| **Observabilidade** | N/A | **Grafana** (Integrado ao Prometheus) para visualização de métricas em tempo real e análise de desempenho. |
+| **Comunicação** | Chamadas Unary gRPC entre Módulo P e Módulos A/B. | Chamadas Unary gRPC, mantendo o mesmo padrão de comunicação. |
+
+###### Tabela 04 - Comparação pré e pós evolução da infra do projeto. Fonte: Autoria própria
+
+## 6. Cenários de Teste e Resultados
+
+### 6.1. Métricas
+
+Para a análise foram escolhidas **Métricas do Sistema** (para validar o autoscaling) e **Métricas de Desempenho** (para avaliar a experiência do usuário e gargalos).
+
+### 6.1.1. Métricas de Escalonamento e Sistema (HPA)
+
+Metricas avaliadas por serviço no dashboard padrão do grafana `Kubernetes / Compute Resources / Namespace (Workloads)` para analisar o comportamento dentro do node para cada serviço, e como os pods escalam e de-escalam com o teste de carga do locust.
+
+| Métrica | Localização | Propósito da Análise |
+| :--- | :--- | :--- |
+| **`kube_horizontalpodautoscaler_status_current_replicas`** | Grafana / Prometheus | Mostrar a transição do número de réplicas do **API Gateway** (Módulo P) durante o teste. **Essencial para provar o *scaling***. |
+| **`container_cpu_usage_seconds_total`** | Grafana / Prometheus | Mostrar o uso de CPU atingindo o limite na **Fase 1 (Sem HPA)** (100%) e estabilizando no alvo (ex: 50%) na **Fase 2 (Com HPA)**. |
+| **RPS (Requests per Second)** | Locust | Medir a taxa máxima de requisições que o sistema conseguiu processar em cada fase, provando o **ganho de capacidade**. |
+
+### 6.1.2. Métricas de Latência e Desempenho (gRPC)
+
+Métricas do dashboard `go gRPC1` no grafana que analisam status das métricas dos servers gRPC dos quais a api-gateway é cliente.
+
+| Categoria | Métrica (PromQL) | Painel Principal | O que Mede |
+| :--- | :--- | :--- | :--- |
+| **Saúde Básica** | `up` | Up (Painel 15) | Indica se o endpoint Prometheus do trabalho (`$job`) está acessível e respondendo (1 = UP, 0 = DOWN). |
+| **QoS / Latência** | `grpc_server_handling_seconds_bucket` | 99%-tile latency (Painel 8) | Utilizada com `histogram_quantile(0.99, ...)` para calcular a Latência P99 das requisições gRPC. |
+| **QoS / Latência** | `grpc_server_handling_seconds_sum` | Average handling time (Painel 16) | Usada para calcular o tempo **médio** de processamento de requisições gRPC. |
+| **Taxa de Erro** | `grpc_server_handled_total` | Global Success Rate, gRPC request code (Painéis 12, 26) | Contador de requisições **finalizadas**, discriminado por `grpc_code` (OK, NotFound, etc.), usado para calcular taxas de sucesso e erro. |
+| **QPS / Carga** | `grpc_server_started_total` | QPS (Painéis 14, 2) | Contador de requisições gRPC **iniciadas**. Usado com `rate()` ou `irate()` para calcular o QPS (Queries Per Second). |
+| **Go Runtime** | `go_goroutines` | Goroutines (Painel 32) | Número de *goroutines* ativas. Ajuda a identificar vazamentos (*leaks*) de concorrência. |
+| **Go Runtime** | `go_gc_duration_seconds` | GC duration quantiles (Painel 30) | Tempo gasto em Coleta de Lixo (GC), geralmente em percentis. Valores altos indicam pausas na aplicação. |
+| **Memória (SO)** | `process_resident_memory_bytes` | process memory (Painel 28) | Memória RAM física (ou swap) usada pelo processo Go (RSS). |
+| **Memória (SO)** | `process_virtual_memory_bytes` | process memory (Painel 28) | Memória virtual total alocada pelo processo. |
+| **Memória (Go)** | `go_memstats_alloc_bytes` | go memstats (Painel 34) | Bytes de memória alocados no heap (montanha) para objetos Go. |
+| **Memória (Go)** | `go_memstats_alloc_bytes_total` | go memstats (Painel 34) | Usado com `rate()` para calcular a **Taxa de Alocação** de memória. |
+| **Memória (Go)** | `go_memstats_stack_inuse_bytes` | go memstats (Painel 34) | Memória usada para as pilhas (*stacks*) das goroutines. |
+| **Memória (Go)** | `go_memstats_heap_inuse_bytes` | go memstats (Painel 34) | Memória do heap atualmente em uso para objetos Go. |
+
+
+### 6.2. Ferramenta de Teste de Carga Locust
+
+O Locust é uma ferramenta de teste de carga de código aberto escrita em Python. Sua principal vantagem é permitir que os cenários de teste sejam definidos usando código Python padrão, o que oferece alta flexibilidade e expressividade.
+
+* **Definição de Carga:** Os cenários de teste são modelados através de classes que herdam de `HttpUser`. Estas classes definem o comportamento dos usuários simulados, as rotas (endpoints) que serão acessadas e a **ponderação** (probabilidade de execução) de cada tarefa.
+* **Interface Web:** O Locust fornece uma interface web que permite controlar o teste em tempo real, especificando o número total de usuários (swarms) e a taxa de inicialização (spawn rate). 
+* **Resultados:** Durante e após a execução, o Locust gera relatórios detalhados com métricas essenciais, como a taxa de requisições por segundo (RPS), a taxa de falha e a **latência**, com foco nos percentis (como P95 e P99), que são cruciais para a análise de desempenho em ambientes distribuídos.
+
+No contexto deste projeto, o Locust é usado para gerar uma carga de estresse controlada no **API Gateway**, servindo como o **gatilho** para a ativação do Horizontal Pod Autoscaler (HPA), enquanto o Prometheus/Grafana monitora a reação do sistema.
+
+### 6.3. Cenário Base (Linha de Referência)
+
+A abordagem para os testes de estresse com o Locust será focada na validação da escalabilidade dinâmica do sistema sob diferentes padrões de carga e todos os cenários de teste serão executados sob a mesma configuração do Kubernetes, com o HPA ativo e configurado.
+
+O objetivo principal será **isolar e medir o impacto do aumento da carga** na capacidade de resposta do sistema. Para isso, os únicos parâmetros que serão variados no Locust, mantendo-se o restante da configuração fixa, serão:
+
+1.  **Número Máximo de Usuários (*Peak Users*)**
+2.  **Taxa de Ramp-Up (*Users Started/Second*)**
+
+Todos os testes terão duração de 4-5 minutos para que os resultados fiquem aparentes nos dashboards do grafana.
+
+### 6.4. Execução dos Cenários
+
+#### Cenário A: Baseline (Rampa Lenta)
+
+Este cenário estabelece a linha de base de desempenho e verifica o acionamento suave e sustentado do HPA.
+
+1.  **Número Máximo de Usuários (*Peak Users*)**: 300
+2.  **Taxa de Ramp-Up (*Users Started/Second*)**: 5
+
+##### K8s e HPA
+
+![Relatório A hpa](/assets/trab3/locust-tests/grafana-a-1.png)
+
+O uso de CPU Rápidamente atingiu mais de 50% para o serviço api-gateway, e o serviço escalou para 5 pods.
+
+##### Go gRPC
+
+![Relatório A grpc](/assets/trab3/locust-tests/grafana-a-2.png)
+
+A métrica foco de handling time das requisições no servidor chegou próxima de 0.6ms para o catalogue-service e 0.3 para o rent-service.
+
+##### Relatório Locust
+
+![Relatório A locust](/assets/trab3/locust-tests/locust-a-1.png)
+
+---
+
+#### Cenário B: Estresse Moderado
+
+Este cenário testa a capacidade de reação do HPA e a latência de aquecimento sob um aumento de demanda mais agressivo.
+
+1.  **Número Máximo de Usuários (*Peak Users*)**: 700
+2.  **Taxa de Ramp-Up (*Users Started/Second*)**: 30
+
+##### K8s e HPA
+
+![Relatório B hpa](/assets/trab3/locust-tests/grafana-b-1.png)
+
+O uso de CPU Rápidamente atingiu mais de 50% para o serviço api-gateway, e o serviço escalou para 5 pods. Os outros serviços gRPC não chegaram a 50% da capacidade mesmo com o aumento do estresse de requisições, provavelmente devido ao scale-up da api-gateway.
+
+##### Go gRPC
+
+![Relatório B grpc](/assets/trab3/locust-tests/grafana-b-2.png)
+
+A métrica foco de handling time das requisições no servidor chegou próxima de 0.6ms para o catalogue-service e 0.4 para o rent-service. Tempos maiores que no cenário A.
+
+##### Relatório Locust
+
+![Relatório B locust](/assets/trab3/locust-tests/locust-b-1.png)
+
+---
+
+#### Cenário C: Stress Extremo
+
+Visa forçar o *scaling out* ao máximo (`maxReplicas` no HPA) e registrar o desempenho no limite máximo do sistema.
+
+1.  **Número Máximo de Usuários (*Peak Users*)**: 1500
+2.  **Taxa de Ramp-Up (*Users Started/Second*)**: 100
+
+##### K8s e HPA
+
+![Relatório C hpa](/assets/trab3/locust-tests/grafana-c-1.png)
+
+Mais uma vez a api-gateway foi o principal "gargalo" chegando rápidamente a mais de 100% da capacidade e escalando para o máximo de pods, que eram 5. Os serviços gRPC ainda permaneceram com uma réplica apenas por não terem atingido 50% de cpu em uso, apesar de ter aumentado o consumo e tempo de resposta.
+
+##### Go gRPC
+
+![Relatório C grpc](/assets/trab3/locust-tests/grafana-c-2.png)
+
+A métrica foco de handling time das requisições no servidor chegou próxima de 0.6ms para o catalogue-service e 0.4 para o rent-service. Cenário quase idêntico ao cenário C mesmo com o rápido aumento de requisições e usuários simulados do locust.
+
+##### Relatório Locust
+
+![Relatório C locust](/assets/trab3/locust-tests/locust-c-1.png)
+
+---
+
+#### Cenário D: Sobrecarga Súbita e stress extremo
+
+Foco em verificar os serviços gRPC também atingindo 50% de CPU e escalando os pods dos serviços gRPC também.
+
+1.  **Número Máximo de Usuários (*Peak Users*)**: 10000
+2.  **Taxa de Ramp-Up (*Users Started/Second*)**: 90
+
+##### K8s e HPA
+
+![Relatório D hpa](/assets/trab3/locust-tests/grafana-d-1.png)
+
+Aqui o cenário de mais de 100% de uso de CPU na api-gateway e scale-up pra 5 pods permaneceu, porém o serviço catalogue chegou a 50% de CPU e também escalou, para 2 pods de um máximo de 5. A api gateway ainda foi gargalo, e dessa vez, com o número elevado de requisições e usuários simulados, o port-forward do k8s caiu 4 vezes, e foi necessário recria-lo para que os testes continuassem. Isso explica os picos e vales dos gráficos do locust.
+
+##### Go gRPC
+
+![Relatório D grpc](/assets/trab3/locust-tests/grafana-d-2.png)
+
+Os tempos de resposta foram relativamente menores nesse caso de teste, o catalogue service chegou a pouco mais de 0.3ms e o rent-service também a 0.3ms.
+
+##### Relatório Locust
+
+![Relatório D locust](/assets/trab3/locust-tests/locust-d-1.png)
+
+#### Cenário Final: Teste com novas configurações de hpa
+
+O último teste foi feito após a alteração da configuração de autoscale dos pods gRPC, que antes escalavam com 50% de CPU (cenário que quase não foi atingido nos últimos testes) para **20% de CPU** e aumento do número máximo de réplicas da api-gateway **de 5 para 8**.
+
+1.  **Número Máximo de Usuários (*Peak Users*)**: 10000
+2.  **Taxa de Ramp-Up (*Users Started/Second*)**: 90
+
+Nova configuração do HPA:
+
+![Nova config de HPA](/assets/trab3/locust-tests/new_hpa.png)
+
+##### K8s e HPA
+
+![Relatório E hpa](/assets/trab3/locust-tests/grafana-e-1.png)
+
+Aqui com as novas alterações os serviços gRPC finalmente escalaram para 2 no caso do rent-service e 3 no caso do catalogue. Isso também melhorou a saúde da aplicação, diminuindo a carga do api-gateway (com certeza aliado ao maior número de 8 réplicas) e o port-forward que caiu 4 vezes no último teste, caiu apenas 1 vez. 
+
+##### Go gRPC
+
+![Relatório E grpc](/assets/trab3/locust-tests/grafana-e-2.png)
+
+Os tempos de resposta diminuiram significativamente com o scale-up dos serviços gRPC ficando para o catalogue service em torno de 0.25ms e 0.15ms para o rent-service.
+
+##### Relatório Locust
+
+![Relatório E locust](/assets/trab3/locust-tests/locust-e-1.png)
+
 ## 7. Conclusão
 ### 7.1. Conclusão Final do Projeto
-### 7.2. Dificuldades Encontradas e Soluções
-### 7.3. Comentários Pessoais e Autoavaliação (Eric Chagas de Oliveira)
-## 8. Referências Utilizadas
 
+Com base nos testes da seção 6, fica claro que a implementação e configuração do HPA no k8s é extremamente importante, especialmente em projetos grandes e com grande tráfego, para aumentar o throughput de requisições e respostas no sistema. Inicialmente limitado pela API Gateway, a otimização do target de CPU para 20% nos serviços gRPC e o aumento das réplicas da API Gateway permitiu que os serviços de backend (Catalogue e Rent) escalassem mais eficientemente, assim como a api-gateway, resultando em uma melhora significativa da Latência e maior estabilidade com uma carga mais alta de requisições.
+
+### 7.2. Dificuldades Encontradas e Soluções
+
+As minhas dificuldades principais foram na configuração da stack de monitoramento e fazer com que o prometheus fizesse o scrape da api, e dos dois serviços gRPC para que o grafana pudesse receber na conexão de dados. Mesmo após a instrumentação do código GO para expor as métricas, ainda precisei voltar algumas vezes e re-configurar a exposição das métricas pra que todas chegassem até o grafana.
+
+A configuração do locust foi relativamente simples, e o cluster kubernetes no kind também, já que meus manifests já estavam prontos para os serviços e a configuração do Kind foi também relativamente simples. O ajuste dos novos manifests que precisei criar para o HPA, e o servicemonitor (para o scrape do prometheus) me deram muita "dor de cabeça" pela necessidade de ajustar as labels e nomes entre os manifestos de deployment e service que já estavam criados com o que o service monitor esperava, além de ter encontrado uma porta que eu estava expondo incorretamente no inicio do projeto para o serviço de catalogue-rest no GO.
+
+A outra dificuldade grande que tive foi configurar o grafana, pois nunca tinha tido contato com a ferramenta, e tive a oportunidade agora de entender melhor como criar dashboards e interagir com as métricas que o prometheus coleta da aplicação para mostrar tudo visualmente, como fiz no meu relatório de testes.
+
+### 7.3. Comentários Pessoais e Autoavaliação (Eric Chagas de Oliveira)
+
+Foi uma experiência também trabalhosa, assim como o trabalho 1, porém considero muito engrandecedora pra minha carreira, especialmente pois já trabalho com provisionamento e devops de aplicações em nuvem no kubernetes (aws eks) porém com uma stack levemente diferente, e aqui pude ter contato com essas ferramentas de observabilidade que pretendo inclusive introduzir nas aplicações que estou envolvido na empresa onde trabalho.
+
+**Auto-avaliação:** Por ter feito o trabalho individualmente, porém com o entendimento que estou entregando um dia atrasado, me auto-avalio com nota 8 (devido ao atraso na entrega) por ter considerado a experiência enriquecedora e achar ter feito um bom trabalho, apesar do atraso.
+
+## 8. Referências Utilizadas
+- https://locust.io/
+- https://prometheus.io/
+- https://kind.sigs.k8s.io/
+- https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/
+- https://grafana.com/
+- https://go.dev/

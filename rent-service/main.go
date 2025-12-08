@@ -84,6 +84,8 @@ func main() {
         grpc.UnaryInterceptor(grpc_prometheus.UnaryServerInterceptor),
 	)
 
+	grpc_prometheus.EnableHandlingTimeHistogram()
+
 	grpc_prometheus.Register(s)
 
 	rentproto.RegisterRentServiceServer(s, &server{})

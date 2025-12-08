@@ -29,6 +29,14 @@ echo "Starting k8s cluster in Kind (1 Control Plane, 2 Workers)..."
 
 kind create cluster --name $CLUSTER_NAME --config kind-config.yaml --wait 2m
 
+# For CPU stats reading and autoscaling
+echo "Installing Metrics Server..."
+kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
+kubectl patch deployment metrics-server -n kube-system --type='json' -p='[{"op": "add", "path": "/spec/template/spec/containers/0/args/-", "value": "--kubelet-insecure-tls"}]'
+
+echo "Waiting for Metrics Server to be ready..."
+kubectl wait --for=condition=Available deployment/metrics-server -n kube-system --timeout=120s
+
 # Build docker images for backend
 docker build -t api-gateway:latest ./api-gateway
 docker build -t catalogue-service:latest -f ./catalogue-service/Dockerfile-grpc ./catalogue-service
