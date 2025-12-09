@@ -6,9 +6,13 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"net/http"
 
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/types/known/emptypb"
+
+	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 // Defining Movie response struct
@@ -106,6 +110,16 @@ func (s *server) GRPCStressTestUnary(ctx context.Context, in *emptypb.Empty) (*c
 
 // Run main
 func main() {
+
+	go func() {
+        log.Println("Catalogue service: Prometheus metrics server starting on port 9090...")
+        http.Handle("/metrics", promhttp.Handler())
+        // Prometheus scrape in port 9090
+        if err := http.ListenAndServe(":9090", nil); err != nil { 
+            log.Fatalf("Failed to run Prometheus metrics server: %v", err)
+        }
+    }()
+
 	lis, err := net.Listen("tcp", ":50051")
 	
 	if err != nil {
@@ -115,7 +129,13 @@ func main() {
 	s := grpc.NewServer(
 		grpc.MaxRecvMsgSize(500*1024*1024),
     	grpc.MaxSendMsgSize(500*1024*1024),
+		grpc.StreamInterceptor(grpc_prometheus.StreamServerInterceptor), 
+        grpc.UnaryInterceptor(grpc_prometheus.UnaryServerInterceptor),
 	)
+
+	grpc_prometheus.EnableHandlingTimeHistogram()
+
+	grpc_prometheus.Register(s)
 	
 	catalogueproto.RegisterCatalogueServiceServer(s, &server{})
 

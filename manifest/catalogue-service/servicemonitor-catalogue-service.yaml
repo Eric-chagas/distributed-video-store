@@ -1,0 +1,18 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: catalogue-service-monitor
+  namespace: default 
+  labels:
+    release: monitoring-stack
+spec:
+  selector:
+    matchLabels:
+      app: catalogue
+  endpoints:
+  - port: metrics
+    path: /metrics
+    interval: 10s
+  namespaceSelector:
+    matchNames:
+    - default

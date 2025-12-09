@@ -1,0 +1,85 @@
+#!/bin/bash
+
+# Set virtualenv and set GO grpc plugins
+source .venv/bin/activate
+go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
+go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
+export PATH="$PATH:$(go env GOPATH)/bin"
+
+# generate protobuffer files for python on api-gateway
+python3 -m grpc_tools.protoc -I=./protos --python_out=./api-gateway/src/proto_generated --grpc_python_out=./api-gateway/src/proto_generated ./protos/rent.proto ./protos/catalogue.proto
+
+# User protoletariat tool to fix protoc absolute imports for python
+protol \
+--create-package \
+  --in-place \
+  --python-out ./api-gateway/src/proto_generated \
+  protoc --proto-path=./protos rent.proto catalogue.proto
+
+# generate protobuffer files for Go lang on both services
+protoc -I=./protos --go_out=paths=source_relative:./catalogue-service/proto_generated/ --go-grpc_out=paths=source_relative:./catalogue-service/proto_generated/ ./protos/catalogue.proto
+protoc -I=./protos --go_out=paths=source_relative:./rent-service/proto_generated/ --go-grpc_out=paths=source_relative:./rent-service/proto_generated/ ./protos/rent.proto
+
+# Build and run front-end and mapped port 5173
+docker build -t video-store-frontend:latest ./frontend/
+docker run -dit -p 5173:5173 --name video-store-frontend-container video-store-frontend:latest
+
+CLUSTER_NAME="video-store-kind-cluster"
+echo "Starting k8s cluster in Kind (1 Control Plane, 2 Workers)..."
+
+kind create cluster --name $CLUSTER_NAME --config kind-config.yaml --wait 2m
+
+# For CPU stats reading and autoscaling
+echo "Installing Metrics Server..."
+kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
+kubectl patch deployment metrics-server -n kube-system --type='json' -p='[{"op": "add", "path": "/spec/template/spec/containers/0/args/-", "value": "--kubelet-insecure-tls"}]'
+
+echo "Waiting for Metrics Server to be ready..."
+kubectl wait --for=condition=Available deployment/metrics-server -n kube-system --timeout=120s
+
+# Build docker images for backend
+docker build -t api-gateway:latest ./api-gateway
+docker build -t catalogue-service:latest -f ./catalogue-service/Dockerfile-grpc ./catalogue-service
+docker build -t catalogue-rest-service:latest -f ./catalogue-service/Dockerfile-rest ./catalogue-service
+docker build -t rent-service:latest ./rent-service
+
+# Load images to kind
+kind load docker-image api-gateway:latest --name $CLUSTER_NAME
+kind load docker-image catalogue-service:latest --name $CLUSTER_NAME
+kind load docker-image catalogue-rest-service:latest --name $CLUSTER_NAME
+kind load docker-image rent-service:latest --name $CLUSTER_NAME
+
+echo "adding prometheus helm repo"
+helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+helm repo update
+
+echo "New monitoring namespace and installing stack kube-prometheus..."
+kubectl create namespace monitoring
+
+helm install monitoring-stack prometheus-community/kube-prometheus-stack --namespace monitoring --wait
+
+sleep 30
+
+# Apply k8s manifest files
+kubectl apply -Rf manifest/
+
+# Sleep 10 seconds to wait for running pods
+sleep 10
+
+# Graphana access
+
+echo "--- Access to Grafana ---"
+echo "Open port-forward in new terminal for graphana access:"
+echo "kubectl port-forward svc/monitoring-stack-grafana 3000:80 -n monitoring"
+
+echo "Creds:"
+echo "Username: admin"
+echo "Password:"
+kubectl get secret monitoring-stack-grafana -n monitoring -o jsonpath="{.data.admin-password}" | base64 --decode
+echo ""
+echo "-----------------------------------"
+
+# Port forward for front-end connection and run in new terminal
+kubectl port-forward svc/api-gateway-service 8000:8000
+
+

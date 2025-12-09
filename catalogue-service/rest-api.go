@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 // Defining Movie response struct
@@ -53,6 +54,9 @@ func runStressTest(c* gin.Context){
 
 func main() {
 	router := gin.Default()
+	// p := ginprometheus.NewPrometheus("gin")
+	// p.Use(router)
+	router.GET("/metrics", gin.WrapH(promhttp.Handler()))
 	router.GET("/rest/movies/", getMoviesRest)
 	router.GET("/rest/stress-test", runStressTest)
 	router.Run("0.0.0.0:8080")
